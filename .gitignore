@@ -1,3 +1,6 @@
 env
+.jac_mypy_cache
 part1/__jac_gen__
 part1/.jac_mypy_cache
+part2/__jac_gen__
+part2/.jac_mypy_cache
