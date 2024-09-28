@@ -1,5 +1,5 @@
-import:py from mtllm.llms {HuggingFaceLLM}
-glob llm = HuggingFaceLLM(model_name='bigscience/bloom-7b1');  # Using BLOOM 7B model
+import:py from transformers {pipeline}
+glob llm = pipeline('text-generation', model='bigscience/bloom-1b7', device=-1, truncation=True, max_length=100);  # CPU
 
 import:jac from rag {RagEngine}
 glob rag_engine:RagEngine = RagEngine();
@@ -15,7 +15,10 @@ node Session {
         chat_history: 'chat history':list[dict],
         agent_role:'role of the agent responding':str,
         context:'retrieved context from documents':list
-    ) -> 'response':str by llm();  # This uses the Hugging Face BLOOM model
+    ) -> str {
+        response = llm(message, max_length=100);  # BLOOM generates text
+        return response[0]["generated_text"];  # Return the generated text
+    }
 }
 
 walker interact {
@@ -23,7 +26,7 @@ walker interact {
     has session_id: str;
 
     can init_session with `root entry {
-        visit [-->](`?Session)(?id == self.session_id) else {
+         visit [-->](`?Session)(?id == self.session_id) else {
             session_node = here ++> Session(id=self.session_id, chat_history=[], status=1);
             print("Session Node Created");
 
@@ -33,7 +36,7 @@ walker interact {
 
     can chat with Session entry {
         here.chat_history.append({"role": "user", "content": self.message});
-        data = rag_engine.get_from_chroma(query=self.message);  # RAG engine retrieves relevant documents
+        data = rag_engine.get_from_chroma(query=self.message);
         response = here.llm_chat(
             message=self.message,
             chat_history=here.chat_history,
